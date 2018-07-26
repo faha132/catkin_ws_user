@@ -42,7 +42,7 @@ def foo():
 
     print("rotvec")
     print(rotation_vector)
-    
+
     print("transvec")
     print(trans_vec)
 
@@ -53,12 +53,21 @@ def foo():
     print('rotmat')
     print(rotation_matrix)
 
-foo()
-# Now calculate the inverse of the Homogeneous transform using the rotation matrix and
-# the translation vector.
+    return rotation_vector, trans_vec, rotation_matrix
 
-# AP = rotation_matrix * BP + APBorg
-
+def bar(rot_vect, trans_vec, rot_mat):
+    print(type(rot_mat))
+    invert_rot_mat = np.matrix.transpose(rot_mat)
+    # {B} = [ abR aPborg ](padded 0 0 0 1) = [(R^-1) | -(R^-1)*t]
+    invert_trans_vec = np.matmul((invert_rot_mat * -1),trans_vec)
+    # AP = rotation_matrix * BP + APBorg
+    print(rot_mat)
+    print('----------------')
+    print(invert_rot_mat)
+    print('------------------------')
+    print(invert_trans_vec) 
+    
+    
 # Calculate the angles (roll pitch and yaw or euler angles) from the rotation matrix.
 # Print in terminal your results and check the if the location and orientation of the camera
-# is correct related to the defined “World Origin”.
+# is correct related to the defined World Origin 
