@@ -1,0 +1,28 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+__init__	../rgb2grey.py	/^  def __init__(self):$/;"	kind:member	line:22
+__init__	../transforms.py	/^    def __init__(self, i):$/;"	kind:member	line:142
+acc	../image_coordinates.py	/^acc = foo()$/;"	kind:variable	line:33
+add_point	../transforms.py	/^    def add_point(self, x, y, c):$/;"	kind:member	line:147
+blob	../transforms.py	/^class blob:$/;"	kind:class	line:140
+callback	../rgb2grey.py	/^  def callback(self,data):$/;"	kind:member	line:31
+camera_mat	../image_coordinates.py	/^camera_mat = np.zeros((3, 3, 1), dtype = "float")$/;"	kind:variable	line:38
+dist_coeffs	../image_coordinates.py	/^dist_coeffs = np.array([[0.1115,-0.1089,0,0]])$/;"	kind:variable	line:47
+dist_coeffs	../image_coordinates.py	/^dist_coeffs = np.zeros((4, 1))$/;"	kind:variable	line:46
+foo	../image_coordinates.py	/^def foo():$/;"	kind:function	line:4
+foo	../transforms.py	/^def foo():       $/;"	kind:function	line:33
+get_center	../transforms.py	/^    def get_center(self):$/;"	kind:member	line:152
+image_converter	../rgb2grey.py	/^class image_converter:$/;"	kind:class	line:20
+image_coordinates.py	../image_coordinates.py	1;"	kind:file	line:1
+img_points	../image_coordinates.py	/^img_points = np.zeros((6,2,1))$/;"	kind:variable	line:35
+main	../rgb2grey.py	/^def main(args):$/;"	kind:function	line:125
+main	../transforms.py	/^def main(args):$/;"	kind:function	line:158
+obj_point	../image_coordinates.py	/^obj_point = np.array([  [0,0,0],$/;"	kind:variable	line:52
+obj_point	../image_coordinates.py	/^obj_point = np.zeros((6, 2, 1))$/;"	kind:variable	line:51
+rgb2grey.py	../rgb2grey.py	1;"	kind:file	line:1
+rmat	../image_coordinates.py	/^rmat = np.zeros((3,3))$/;"	kind:variable	line:69
+transforms.py	../transforms.py	1;"	kind:file	line:1
