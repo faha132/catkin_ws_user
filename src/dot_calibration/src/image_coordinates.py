@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import cv_bridge
 
 def foo():
     cv_image = cv2.imread('transferm.png', flags=cv2.IMREAD_GRAYSCALE)
@@ -66,7 +67,7 @@ def bar(rot_vect, trans_vec, rot_mat):
     print(invert_rot_mat)
     print('------------------------')
     print(invert_trans_vec) 
-    
+       
     
 # Calculate the angles (roll pitch and yaw or euler angles) from the rotation matrix.
 # Print in terminal your results and check the if the location and orientation of the camera

@@ -5,13 +5,12 @@ import roslib
 import sys
 import rospy
 import cv2
-import cv_bridge
 from sensor_msgs.msg import Image
 
 class image_converter:
 
   def __init__(self):
-    self.image_pub_gray = rospy.Publisher("/assignment34321/bin_img/gray",Image, queue_size=1)
+    self.image_pub_hsv = rospy.Publisher("/assignment4kf/hsv",Image, queue_size=1)
 
     self.image_pub_bw = rospy.Publisher("/assignment34321/bin_img/bw",Image, queue_size=1)
 
@@ -26,17 +25,16 @@ class image_converter:
       print(e)
 
 
-    #make it gray
-    gray=cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+    #make it hsv
+    hsv=cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
 
     #bi_gray
     bi_gray_max = 255
     bi_gray_min = 240 #210
-    ret,thresh1=cv2.threshold(gray, bi_gray_min, bi_gray_max, cv2.THRESH_BINARY);
+    ret,thresh1=cv2.threshold(hsv, bi_gray_min, bi_gray_max, cv2.THRESH_BINARY);
 
     try:
-
-      self.image_pub_gray.publish(self.bridge.cv2_to_imgmsg(gray, "mono8"))
+      self.image_pub_hsv.publish(self.bridge.cv2_to_imgmsg(hsv, "mono8"))
       self.image_pub_bw.publish(self.bridge.cv2_to_imgmsg(thresh1, "mono8"))
     except CvBridgeError as e:
       print(e)
