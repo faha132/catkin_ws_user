@@ -5,6 +5,8 @@ import roslib
 import sys
 import rospy
 import cv2
+import cv_bridge
+from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 
 class image_converter:
