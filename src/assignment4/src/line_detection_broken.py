@@ -70,58 +70,62 @@ class image_converter:
     except CvBridgeError as e:
       print(e)
 
-       
-    _, contours, _ = cv2.findContours(thresh1, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    #lane detection 
 
-    lane_contours = [None, None]
-    first_size = 0
-    secnd_size = 0
+    #split image in halves
+    left = thresh1[:,:int(thresh1.shape[1]/2)]
+    right = thresh1[:,int(thresh1.shape[1]/2):]
 
-    for contour in contours:
-        test = cv2.contourArea(contour)
-        if test > first_size:
-            lane_contours[1] = lane_contours[0]
-            secnd_size = first_size
-            lane_contours[0] = contour
-            first_size = test
-        elif test > secnd_size:
-            lane_contours[1] = contour
-            secnd_size = test
-        
-    lane_models = [None, None]
-    print(lane_contours[0].shape)
-    print type(lane_contours[0])
-    for i in range(len(lane_contours)):
-        points = lane_contours[i]
-        lane_models[i] = linear_model.RANSACRegressor()
-        lane_models[i].fit(points[:,:,0], points[:,:,1])
-
-    b1 = lane_models[0].predict(0).item(0)
-    b2 = lane_models[1].predict(0).item(0)
-    m1 = (lane_models[0].predict(100).item(0) - b1)/100
-    m2 = (lane_models[1].predict(100).item(0) - b2)/100
-
-    print("m1: " + str(m1) + " b1: " + str(b1) )
-    print("m2: " + str(m2) + " b2: " + str(b2) )
-
-
-    # draw the lines
-    height, width = cv_image[:2]
-    width = int(cv_image.shape[1])    
-    cv2.line(cv_image, (0,int(b1)), (width,int(b1+width*m1)), 
-              (0,0,255), thickness=2, lineType=cv2.LINE_AA)
-    cv2.line(cv_image, (0,int(b2)), (width,int(b2+width*m2)), 
-              (0,0,255), thickness=2, lineType=cv2.LINE_AA)
+    dots1 = np.where(right == 255)
+    points1 = np.zeros((dots1[0].shape[0],1,2), np.int8 )
+    for i,x in enumerate(dots1[0]):
+      points1[i][0][0]=x
+    for i,y in enumerate(dots1[1]):
+      points1[i][0][1]=y
 
     
+    lane_model1 = linear_model.RANSACRegressor()
+    lane_model1.fit(points1[:,:,0], points1[:,:,1])
+
+    b2 = lane_model1.predict(0).item(0)
+    print b2
+    m2 = (lane_model1.predict(100).item(0) - b2)/100
+    print m2
+
+    # draw the lines
+
+    height, width = cv_image.shape[:2]
+    cv2.line(cv_image, (int(width/2),int(b2)) ,(width,int(b2+width*m2)), 
+	     (0,0,255), thickness=2, lineType=cv2.LINE_AA)
+    
+#    dots1 = np.where(left == 255)
+#    points1 = np.zeros((dots1[0].shape[0],1,2), np.int8 )
+#    for i,x in enumerate(dots1[0]):
+#      points1[i][0][0]=x
+#    for i,y in enumerate(dots1[1]):
+#      points1[i][0][1]=y
+#
+#    
+#    lane_model1 = linear_model.RANSACRegressor()
+#    lane_model1.fit(points1[:,:,0], points1[:,:,1])
+#
+#    b2 = lane_model1.predict(0).item(0)
+#    m2 = (lane_model1.predict(100).item(0) - b2)/100
+#
+#    # draw the lines
+#    x_max = int(cv_image.shape[1])    
+#    cv2.line(cv_image[120:,:], (0,int(b2)), (x_max,int(b2+(x_max/2)*m2)), 
+#	     (0,0,255), thickness=2, lineType=cv2.LINE_AA)
+#
+#
     # publish an image to the control topic
     try:
-        self.image_pub_lined.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+      self.image_pub_lined.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
     except CvBridgeError as e:
-        print(e)
+      print(e)
 
 def main(args):
-  rospy.init_node('simple_node', anonymous=True)
+  rospy.init_node('image_converter', anonymous=True)
   ic = image_converter()
   try:
     rospy.spin()

@@ -1,12 +1,20 @@
 #!/usr/bin/env python
-# roslib.load_manifest('my_package')
-#--------------------------
 import roslib
+# roslib.load_manifest('my_package')
 import sys
 import rospy
 import cv2
-from cv_bridge import CvBridge, CvBridgeError
+from std_msgs.msg import String
+from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Point
+from geometry_msgs.msg import Quaternion
 from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+#import matplotlib
+#matplotlib.use('Agg')
+from matplotlib import pyplot as plt
+
+# from __future__ import print_function
 
 class image_converter:
 
@@ -17,7 +25,6 @@ class image_converter:
 
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("/app/camera/rgb/image_raw",Image,self.callback, queue_size=1)
-
 
   def callback(self,data):
     try:
