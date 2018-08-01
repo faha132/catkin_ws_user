@@ -10,8 +10,9 @@ import ros_numpy
 # --- definitions ---
 def resetGrid():
     global occupancy_grid
-    
-    # set all values to "FREE"
+    for cell in xrange(len(occupancy_grid.data)):
+        occupancy_grid.data[cell]=FREE
+          # set all values to "FREE"
 
 # to a given cartesian x,y coordinate, mark the corresponding cell in the grid as "OCCUPIED"
 def setCell(x,y):
@@ -25,7 +26,7 @@ def setCell(x,y):
         return
 
     offset = (int(round(x_scaled)) - 1) * occupancy_grid.info.height
-    occupancy_grid.data[int(offset) + int(round(y_scaled) - 1)] = 100
+    occupancy_grid.data[int(offset) + int(round(y_scaled) - 1)] = OCCUPIED  
 
 
 def scanCallback(scan_msg):
@@ -36,11 +37,8 @@ def scanCallback(scan_msg):
     radius = np.asarray(scan_msg.ranges)
     # print(radius.dtype)
     # print(radius.shape)
-    grid = OccupancyGrid()
     angles = np.arange(scan_msg.angle_min, scan_msg.angle_max + scan_msg.angle_increment / 2, scan_msg.angle_increment)
-    mask_fin = np.isfinite(radius)  # only consider finite radii
-
-    mask = mask_fin
+    mask = np.isfinite(radius)  # only consider finite radii
 
     masked_angles = angles[mask]
     masked_radius = radius[mask]
@@ -55,25 +53,26 @@ def scanCallback(scan_msg):
 
     for (x, val, y) in X:
         setCell(x,y)
-    
-    grid = ros_numpy.msgify(OccupancyGrid, data)
-    grid.info.resolution=0.1
+    #print(OccupancyGrid)
+    #grid = ros_numpy.msgify(OccupancyGrid, data)
+    #grid.info.resolution=0.1
     # convert scan measurements into an occupancy grid    
+    pub_grid.publish(occupancy_grid)
 
-    pub_grid.publish(grid)
-
-
-# --- main ---
+# --- main --
+FREE = -1
+OCCUPIED = 100
 rospy.init_node("scan_grid")
 
 # init occupancy grid
 occupancy_grid = OccupancyGrid()
-occupancy_grid.header.frame_id = "laser"
+# was "laser" got error in rviz
+occupancy_grid.header.frame_id = "map"
 occupancy_grid.info.resolution = 0.1 # in m/cell
 
 # width x height cells
-occupancy_grid.info.width = 100
-occupancy_grid.info.height = 100
+occupancy_grid.info.width = 1000
+occupancy_grid.info.height = 1000
 occupancy_grid.data = np.zeros(occupancy_grid.info.width * occupancy_grid.info.height)
 
 # origin is shifted at half of cell size * resolution

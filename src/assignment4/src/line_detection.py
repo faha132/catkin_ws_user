@@ -105,7 +105,6 @@ class image_converter:
     print("m2: " + str(m2) + " b2: " + str(b2) )
 
 
-    # draw the lines
     height, width = cv_image[:2]
     width = int(cv_image.shape[1])    
     cv2.line(cv_image, (0,int(b1)), (width,int(b1+width*m1)), 
@@ -113,8 +112,6 @@ class image_converter:
     cv2.line(cv_image, (0,int(b2)), (width,int(b2+width*m2)), 
               (0,0,255), thickness=2, lineType=cv2.LINE_AA)
 
-    
-    # publish an image to the control topic
     try:
         self.image_pub_lined.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
     except CvBridgeError as e:
