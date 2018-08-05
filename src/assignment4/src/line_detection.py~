@@ -4,7 +4,7 @@ import roslib
 import sys
 import rospy
 import cv2
-import numpy 
+import numpy as np
 # from std_msgs.msg import String
 # from geometry_msgs.msg import Pose
 # from geometry_msgs.msg import Point
@@ -70,41 +70,55 @@ class image_converter:
     except CvBridgeError as e:
       print(e)
 
-    #lane detection 
+       
+    _, contours, _ = cv2.findContours(thresh1, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
 
-    #split image in halves
-    left = thresh1[:,:int(thresh1.shape[1]/2)]
-    right = thresh1[:,int(thresh1.shape[1]/2):]
-    im2, contours, hierarchy = cv2.findContours(thresh1, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-    
-    dots1 = np.where(left == 255)
-    #print (dots1[0].shape[0])
-    #dots1[0].reshape(dots1[0].shape[0],1,1)
-    #dots1[1].reshape(dots1[1].shape[0],1,1)
-    #print (dots1[0].shape)
-    points = np.zeros((dots1[0].shape[0],1,2), numpy.
-    
-    lane_model1 = linear_model.RANSACRegressor()
-    #lane_model1.fit(dots1[0], dots1[1])
+    lane_contours = [None, None]
+    first_size = 0
+    secnd_size = 0
 
-#    # somewhat awkward m*x+b parameter extraction
-#    b2 = lane_model1.predict(0).item(0)
-#    m2 = (lane_models1.predict(100).item(0) - b2)/100
-#
-#    # draw the lines
-#    x_max = int(cv_image.shape[1])    
-#    cv2.line(cv_image[CROP:,:], (0,int(b2)), (x_max,int(b2+x_max*m2)), 
-#	     (0,0,255), thickness=2, lineType=cv2.LINE_AA)
-#
-#
-    # publish an image to the control topic
+    for contour in contours:
+        test = cv2.contourArea(contour)
+        if test > first_size:
+            lane_contours[1] = lane_contours[0]
+            secnd_size = first_size
+            lane_contours[0] = contour
+            first_size = test
+        elif test > secnd_size:
+            lane_contours[1] = contour
+            secnd_size = test
+        
+    lane_models = [None, None]
+    print(lane_contours[0].shape)
+    print type(lane_contours[0])
+    for i in range(len(lane_contours)):
+        points = lane_contours[i]
+        lane_models[i] = linear_model.RANSACRegressor()
+        lane_models[i].fit(points[:,:,0], points[:,:,1])
+
+    b1 = lane_models[0].predict(0).item(0)
+    b2 = lane_models[1].predict(0).item(0)
+    m1 = (lane_models[0].predict(100).item(0) - b1)/100
+    m2 = (lane_models[1].predict(100).item(0) - b2)/100
+
+    print("m1: " + str(m1) + " b1: " + str(b1) )
+    print("m2: " + str(m2) + " b2: " + str(b2) )
+
+
+    height, width = cv_image[:2]
+    width = int(cv_image.shape[1])    
+    cv2.line(cv_image, (0,int(b1)), (width,int(b1+width*m1)), 
+              (0,0,255), thickness=2, lineType=cv2.LINE_AA)
+    cv2.line(cv_image, (0,int(b2)), (width,int(b2+width*m2)), 
+              (0,0,255), thickness=2, lineType=cv2.LINE_AA)
+
     try:
-      self.image_pub_lined.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
+        self.image_pub_lined.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
     except CvBridgeError as e:
-      print(e)
+        print(e)
 
 def main(args):
-  rospy.init_node('image_converter', anonymous=True)
+  rospy.init_node('simple_node', anonymous=True)
   ic = image_converter()
   try:
     rospy.spin()

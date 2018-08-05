@@ -1,0 +1,4 @@
+<launch>
+	<node name="obst_detector" pkg="assignment8" type="obst_detector" output="screen"/>
+	<node name="obst_driver" pkg="assignment8" type="obst_driver"/>
+</launch>
