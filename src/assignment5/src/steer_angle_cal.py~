@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+# --- imports ---
+import rospy
+import numpy as np
+from nav_msgs.msg import OccupancyGrid
+from sensor_msgs.msg import LaserScan
+import ros_numpy
+
+# --- definitions ---
+
+def surroundingCallback(grid):
+    if not move:
+        res = grid.info.resolution
+        width = grid.info.width
+        height = grid.info.height
+        closestDists = grid.data
+        #filter outliers
+        avrgDist = sum(closestDists)/float(len(closestDists))
+        farestDist = max(closestDists)
+        nearestDist = min(closestDists)
+        #avrg should be closer to farest 
+        interestingDist = farestDist - avrgDist
+        interestingDist = int(avrgDist - ((5/float(4)) *interestingDist))
+        candidates = []
+        #find perpendicular points
+        points = [farestDist,farestDist]
+        for n,candidate in enumerate(closestDists):
+            if candidate >= interestingDist:
+                candidates.append(n)
+                if closestDists[points[0]] > candidate:
+                    points[0]=n
+        #one spot of each table
+        (x,y)=(points[0]%width,int(points[0]/width))
+        if x < y:
+            for n,candidate in enumerate(candidates):
+                if n%width < int(n/ width):
+                    candidates.pop(n)
+        else:
+            for n,candidate in enumerate(candidates):
+                    if n%width > int(n/ width):
+                        candidates.pop(n)
+        for n,candidate in enumerate(closestDists):
+            if candidate >= interestingDist:
+                candidates.append(n)
+                if closestDists[points[1]] > candidate:
+                    points[1]=n
+        if measure < len(measurements):
+            measurements[measure]=points
+            measure += 1
+            move = True
+    elif move:
+        steps = 0
+        pub_steer.publish(UInt32(steering))
+        while steps < movecounter:
+            pub_vel.publish(Int32(-100))
+
+    
+
+rospy.Subscriber("scan_grid", OccupancyGrid, surroundingCallback, queue_size=100)
+#test pub names
+pub_steer = rospy.Publisher("fabiankhaled/steering", Int32, queue_size=1)
+pub_vel = rospy.Publisher("fabiankhaled/manualControl/speed", Int32, queue_size=1)
+measure = 0
+measurements = [None,None,None]
+move = False
+#Hyperparameter
+steering = 0
+movecounter = 100
+#------------
+turningRadius=0
+rospy.spin()

@@ -77,8 +77,8 @@ class image_converter:
     first_size = 0
     secnd_size = 0
 
-    for contour in contours:
-        test = cv2.contourArea(contour)
+for contour in contours:
+    test = cv2.contourArea(contour)
         if test > first_size:
             lane_contours[1] = lane_contours[0]
             secnd_size = first_size

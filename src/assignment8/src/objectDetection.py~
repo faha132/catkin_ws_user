@@ -14,7 +14,7 @@ class obst_detector:
     self.image_sub = rospy.Subscriber("/fabiankhaled/app/camera/depth/image_raw",
             Image,self.obstacle_callback, queue_size=1)
 
-  def callback(self,data):
+  def obstacle_callback(self,data):
     try:
       depth_image = self.bridge.imgmsg_to_cv2(data, "16UC1")
     except CvBridgeError as e:

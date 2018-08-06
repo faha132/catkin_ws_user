@@ -37,7 +37,8 @@ def scanCallback(scan_msg):
     radius = np.asarray(scan_msg.ranges)
     # print(radius.dtype)
     # print(radius.shape)
-    angles = np.arange(scan_msg.angle_min, scan_msg.angle_max + scan_msg.angle_increment / 2, scan_msg.angle_increment)
+    angles = np.arange(scan_msg.angle_min, 
+                       scan_msg.angle_max + scan_msg.angle_increment / 2, scan_msg.angle_increment)
     mask = np.isfinite(radius)  # only consider finite radii
 
     masked_angles = angles[mask]
@@ -47,11 +48,11 @@ def scanCallback(scan_msg):
     x = np.cos(masked_angles) * masked_radius
     y = np.sin(masked_angles) * masked_radius
 
-    X = np.ones((np.size(x),3))
+    X = np.ones((np.size(x),2))
     X[:,0]=x
-    X[:,2]=y
+    X[:,1]=y
 
-    for (x, val, y) in X:
+    for (x, y) in X:
         setCell(x,y)
     #print(OccupancyGrid)
     #grid = ros_numpy.msgify(OccupancyGrid, data)

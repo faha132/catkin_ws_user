@@ -21,7 +21,7 @@ from sklearn import linear_model
 class image_converter:
 
   def __init__(self):
-      
+
     self.image_pub_yuv = rospy.Publisher("/image_processing/lines_from_yuv",Image, queue_size=1)
     self.image_pub_bgr = rospy.Publisher("/image_processing/lines_from_bgr",Image, queue_size=1)
     self.image_pub_hsv = rospy.Publisher("/image_processing/lines_from_hsv",Image, queue_size=1)
@@ -31,11 +31,11 @@ class image_converter:
 
 
   def callback(self,data):
-    try:
-      cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-    except CvBridgeError as e:
-      print(e)
-    
+      try:
+          cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+      except CvBridgeError as e:
+          print(e)
+
     #hsv colorspace
 
     hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
@@ -63,22 +63,22 @@ class image_converter:
     #not a big difference
     resbgr = cv2.bitwise_and(cv_image,cv_image, mask=maskbgr)
     try:
-      #no good encoding found bgr atleast delivers visible output
-      self.image_pub_hsv.publish(self.bridge.cv2_to_imgmsg(reshsv, encoding="bgr8"))
-      self.image_pub_yuv.publish(self.bridge.cv2_to_imgmsg(thresh1, "mono8" ))
-      self.image_pub_bgr.publish(self.bridge.cv2_to_imgmsg(resbgr, encoding="bgr8"))
+        #no good encoding found bgr atleast delivers visible output
+        self.image_pub_hsv.publish(self.bridge.cv2_to_imgmsg(reshsv, encoding="bgr8"))
+        self.image_pub_yuv.publish(self.bridge.cv2_to_imgmsg(thresh1, "mono8" ))
+        self.image_pub_bgr.publish(self.bridge.cv2_to_imgmsg(resbgr, encoding="bgr8"))
     except CvBridgeError as e:
-      print(e)
+        print(e)
 
-       
+
     _, contours, _ = cv2.findContours(thresh1, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
 
     lane_contours = [None, None]
     first_size = 0
     secnd_size = 0
 
-for contour in contours:
-    test = cv2.contourArea(contour)
+    for contour in contours:
+        test = cv2.contourArea(contour)
         if test > first_size:
             lane_contours[1] = lane_contours[0]
             secnd_size = first_size
@@ -87,7 +87,7 @@ for contour in contours:
         elif test > secnd_size:
             lane_contours[1] = contour
             secnd_size = test
-        
+
     lane_models = [None, None]
     print(lane_contours[0].shape)
     print type(lane_contours[0])
@@ -104,13 +104,12 @@ for contour in contours:
     print("m1: " + str(m1) + " b1: " + str(b1) )
     print("m2: " + str(m2) + " b2: " + str(b2) )
 
-
     height, width = cv_image[:2]
     width = int(cv_image.shape[1])    
     cv2.line(cv_image, (0,int(b1)), (width,int(b1+width*m1)), 
-              (0,0,255), thickness=2, lineType=cv2.LINE_AA)
+             (0,0,255), thickness=2, lineType=cv2.LINE_AA)
     cv2.line(cv_image, (0,int(b2)), (width,int(b2+width*m2)), 
-              (0,0,255), thickness=2, lineType=cv2.LINE_AA)
+             (0,0,255), thickness=2, lineType=cv2.LINE_AA)
 
     try:
         self.image_pub_lined.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
@@ -118,13 +117,13 @@ for contour in contours:
         print(e)
 
 def main(args):
-  rospy.init_node('simple_node', anonymous=True)
-  ic = image_converter()
-  try:
-    rospy.spin()
-  except KeyboardInterrupt:
-    print("Shutting down")
-  cv2.destroyAllWindows()
+    rospy.init_node('simple_node', anonymous=True)
+    ic = image_converter()
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        print("Shutting down")
+        cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
