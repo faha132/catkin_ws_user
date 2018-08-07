@@ -34,7 +34,7 @@ class obst_driver:
 		self.speed_value = 1000  # 2000
 		# load forcefield
 		rospack = rospkg.RosPack()
-		self.file_path = rospack.get_path('obstacle_detection') + '/src/'
+		self.file_path = rospack.get_path('assignment8') + '/src/'
 		if (self.lane == 0):
 			self.matrix = np.load(self.file_path + 'matrix100cm_lane1.npy')
 		else:

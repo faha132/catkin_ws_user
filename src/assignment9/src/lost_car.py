@@ -5,6 +5,7 @@ import rospy
 import rospkg
 import math
 import tf
+from matplotlib import pyplot as plt
 
 from std_msgs.msg import Int32, UInt8, Float64, Int16, Float64MultiArray, Bool
 from sensor_msgs.msg import Image
@@ -28,7 +29,6 @@ class obst_driver:
 		self.bridge = CvBridge()
 		self.point_img = cv2.imread('points.png', flags=cv2.IMREAD_GRAYSCALE)
 		#numpy array points values != 255
-		#print self.point_img.shape
 		# Field_Controller
 		self.resolution = 10  # cm
 		self.lane = 0
@@ -105,18 +105,30 @@ class obst_driver:
 		  depth_image = self.bridge.imgmsg_to_cv2(data, "16UC1")
 		except CvBridgeError as e:
 		  print(e)
-		print depth_image.shape
 		#height, width = depth_image.shape[0:2]
-		#do something with the rotation matrix from a2
-
+		#dist camera to ground 155 in depth measure scale
 
 
 	def create_matrix(self):
-		mat_map = np.empty_like(self.point_img)
+		mat_map = np.copy(self.point_img)
 		height, width = mat_map.shape[:2]
-		print((height,width))
-		#for row in mat_map:
-		#	for cell in row:
+		#find most far out points ymin,xmin,ymax,xmax
+		#... there are outliers 
+	#	trackshape = [height, width, 0, 0]
+	#	for y,row in enumerate(mat_map):
+	#		for x,cell in enumerate(row):
+	#			if cell != 255:
+	#				trackshape[0]=min(y,trackshape[0])
+	#				trackshape[1]=min(x,trackshape[1])
+	#				trackshape[2]=max(y,trackshape[2])
+	#				trackshape[3]=max(x,trackshape[3])
+	#	mat_map = mat_map[trackshape[0]:trackshape[2],trackshape[1]:trackshape[3]]
+		plt.imshow(mat_map, interpolation='nearest')
+		plt.show()
+	
+
+				
+				
 
 	def odom_callback(self, raw_msgs):
 		# retrieving values from message

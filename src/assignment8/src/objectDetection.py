@@ -5,6 +5,7 @@ import rospy
 from std_msgs.msg import Int32
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+import cv2
 
 class obst_detector:
 
@@ -25,12 +26,19 @@ class obst_detector:
     switch = 5000
     
     #only corners and centers
-    for y in xrange(0,height,height//3-1):
-      for x in xrange(0,width,width//3-1):
-        if depth_array[y,x] >= 60:
-    
-    #mounted objects have closer range 
-          switch = min(depth_array[y,x],switch)
+    for y in xrange(height//3, 2*(height//3), height // 12 - 1):
+      for x in xrange((width//3), 2*(width//3),
+                   width // 12 - 1):
+        if depth_array[y, x] >= 60:
+                        # mounted objects have closer range
+          switch = min(depth_array[y, x], switch)
+
+    #for y in xrange(0,height,height//3-1):
+    #  for x in xrange(0,width,width//3-1):
+    #    if depth_array[y,x] >= 60:
+    #
+    ##mounted objects have closer range 
+    #      switch = min(depth_array[y,x],switch)
     try:
         #0 would be inside the camera -> flag for nothing detected
         self.obstacle_pub.publish(Int32(switch))
