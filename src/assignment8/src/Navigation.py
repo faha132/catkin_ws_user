@@ -14,6 +14,7 @@ from std_msgs.msg import UInt8, Float64, Int16, Float64MultiArray, Bool
 class field_Controller:
 
     def __init__(self):
+        
         self.yaw= 0. 
         self.resolution = 10 # cm
         self.lane=0

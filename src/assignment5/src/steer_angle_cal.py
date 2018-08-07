@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # --- imports ---
+import math
 import rospy
 import numpy as np
 from nav_msgs.msg import OccupancyGrid
@@ -52,13 +53,37 @@ def surroundingCallback(grid):
             measurements[measure]=points
             measure += 1
             move = True
+        else:
+            #calculate the center of the cirlce
+            #2 equilateral triangles crosspoint of perdendicular line
+            #pos out of pos points on the wall
+            points = []
+            for n,points in enumerate(measurements):
+                pos = [None, None]
+                [m,n] = points
+                x1,y1 = m%width , m// width
+                x2,y2 = n%width , n// width
+                if x1 < y1:
+                    #bedingung nord, ost positiv
+                    pos = [x1,y2]
+                else:
+                    pos = [x2,y1]
+                points.append(pos)
+            
+
+                    
+                
+
+            
+
     elif move:
         steps = 0
         pub_steer.publish(UInt32(steering))
         while steps < movecounter:
             pub_vel.publish(Int32(-100))
-
     
+
+
 
 rospy.Subscriber("scan_grid", OccupancyGrid, surroundingCallback, queue_size=100)
 #test pub names

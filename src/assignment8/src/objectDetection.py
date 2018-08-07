@@ -11,8 +11,7 @@ class obst_detector:
   def __init__(self):
     self.obstacle_pub = rospy.Publisher("/obstacle/warning",Int32, queue_size=1)
     self.bridge = CvBridge()
-    self.image_sub = rospy.Subscriber("/fabiankhaled/app/camera/depth/image_raw",
-            Image,self.obstacle_callback, queue_size=1)
+    self.image_sub = rospy.Subscriber("/fabiankhaled/app/camera/depth/image_raw", Image,self.obstacle_callback, queue_size=1)
 
   def obstacle_callback(self,data):
     try:
@@ -21,14 +20,17 @@ class obst_detector:
       print(e)
     depth_array = np.array(depth_image, dtype=np.uint16)
     height, width = depth_array.shape[0:2]
+    
     curr_lane = 1
-    switch = 0
+    switch = 5000
+    
     #only corners and centers
     for y in xrange(0,height,height//3-1):
       for x in xrange(0,width,width//3-1):
         if depth_array[y,x] >= 60:
+    
     #mounted objects have closer range 
-          switch = max(depth_array[y,x],switch)
+          switch = min(depth_array[y,x],switch)
     try:
         #0 would be inside the camera -> flag for nothing detected
         self.obstacle_pub.publish(Int32(switch))

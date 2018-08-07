@@ -1,4 +1,8 @@
 <launch>
-	<node name="obst_detector" pkg="assignment8" type="obst_detector" output="screen"/>
+	<node name="master_discovery" pkg="master_discovery_fkie" type="master_discovery" output="screen"/>
+	<node name="master_sync" pkg="master_sync_fkie" type="master_sync"/>
+	<node name="obst_detector" pkg="assignment8" type="obst_detector" />
 	<node name="obst_driver" pkg="assignment8" type="obst_driver"/>
+	<node name="field_controller" pkg="assignment8" type="field_controller"/>
+
 </launch>
