@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+from scipy import ndimage
 import sys
 import rospy
 import rospkg
@@ -17,23 +18,35 @@ import cv2
 class obst_driver:
 
 	def __init__(self):
+		#faulty gps
+		self.x = 0
+		self.y = 0
+		self.yaw = 0
+		#todo inner outer lap
+		self.map_file = np.load("map.npy")
+		# for no gaps in the lap
+		#todo in file
+		#self.map_file = ndimage.binary_dilation(self.map_file,
+		#										iterations=1).astype(self.map_file.dtype)
+		self.score = []
 		rospy.on_shutdown(self.shutdown)
 		self.shutdown_ = False
-                #publisher
+		#publisher
+		self.image_pub_gray = rospy.Publisher("/assignment34321/bin_img/gray",Image, queue_size=1		 )
 		self.obstacle_pub = rospy.Publisher("/obstacle/warning", Int32, queue_size=1)
 		self.vel_pub = rospy.Publisher("/fabiankhaled/manual_control/speed", 
-                                 Int16, queue_size=100)
+									   Int16, queue_size=100)
 		self.str_pub = rospy.Publisher("/fabiankhaled/steering", UInt8, queue_size=1)
 		self.lane_change = rospy.Publisher("/Lane_change", Bool, queue_size=1)
-                #imageimport
+		#imageimport
 		self.bridge = CvBridge()
 		self.point_img = cv2.imread('points.png', flags=cv2.IMREAD_GRAYSCALE)
 		#numpy array points values != 255
 		# Field_Controller
 		self.resolution = 10  # cm
-		self.lane = 0
+		self.lane = 1
 		# driving forward
-		self.speed_value = 1000  # 2000
+		self.speed_value = 500  # 2000
 		# load forcefield
 		rospack = rospkg.RosPack()
 		self.file_path = rospack.get_path('assignment9') + '/src/'
@@ -41,6 +54,7 @@ class obst_driver:
 			self.matrix = np.load(self.file_path + 'matrix100cm_lane1.npy')
 		else:
 			self.matrix = np.load(self.file_path + 'matrix100cm_lane2.npy')
+		self.map_mat = np.load(self.file_path + 'map.npy')
 		# dynamic mapsize for some reason matrix is not y * x (rows by columns)
 		self.map_size_x, self.map_size_y = self.matrix.shape[:2]
 		self.map_size_y *= self.resolution
@@ -50,174 +64,265 @@ class obst_driver:
 		self.last_error = 0.
 		self.last_time = rospy.Time.now()
 		self.str_val = 0
-                #object avoiding
+		#object avoiding
 		self.time_acc = rospy.Time.now()
-                #subscribers
-		self.image_sub = rospy.Subscriber("/fabiankhaled/app/camera/depth/image_raw",
-                                    Image, self.obstacle_callback, queue_size=1)
+		#subscribers
+		self.image_sub = rospy.Subscriber("/fabiankhaled/app/camera/ir/image_raw",
+										  Image, self.line_callback, queue_size=1)
 		#self.obstacle_sub = rospy.Subscriber("/obstacle/warning", Int32, 
-                #                       self.callback, queue_size=1)
+		#												self.callback, queue_size=1)
 		self.odom_sub = rospy.Subscriber("/localization/odom/0", Odometry, 
-                                   self.odom_callback)
+												self.odom_callback)
 		#self.lane_change_sub = rospy.Subscriber("/Lane_change", Bool, 
-                #                          self.Lane_cahange)
-		self.create_matrix()
+		#												   self.Lane_cahange)
 
-#	def obstacle_callback(self, data):
-#		try:
-#		  depth_image = self.bridge.imgmsg_to_cv2(data, "16UC1")
-#		except CvBridgeError as e:
-#                #numpyfy image
-#		depth_array = np.array(depth_image, dtype=np.uint16)
-#		height, width = depth_array.shape[0:2]
-#                #most far distance is about 500
-#		switch = 5000
-#		# only corners and centers in ROI
-#		#dynamic asuming x is from left to right
-#		shiftBy = self.str_val // 180 
-#		for y in xrange(height//3, 2*(height//3), height // 12 - 1):
-#		  for x in xrange(shiftBy*(width//180), shiftBy*(width//180)+(width//3), 
-#                    width // 12 - 1):
-#			if depth_array[y, x] >= 60:
-#		        # mounted objects have closer range
-#			  switch = min(depth_array[y, x], switch)
+#		def obstacle_callback(self, data):
+#				try:
+#				  depth_image = self.bridge.imgmsg_to_cv2(data, "16UC1")
+#				except CvBridgeError as e:
+#								 #numpyfy image
+#				depth_array = np.array(depth_image, dtype=np.uint16)
+#				height, width = depth_array.shape[0:2]
+#								 #most far distance is about 500
+#				switch = 5000
+#				# only corners and centers in ROI
+#				#dynamic asuming x is from left to right
+#				shiftBy = self.str_val // 180 
+#				for y in xrange(height//3, 2*(height//3), height // 12 - 1):
+#				  for x in xrange(shiftBy*(width//180), shiftBy*(width//180)+(width//3), 
+#										 width // 12 - 1):
+#						if depth_array[y, x] >= 60:
+#								# mounted objects have closer range
+#						  switch = min(depth_array[y, x], switch)
 #
-#		if not self.shutdown_:
-#			try:
-#				# 0 would be inside the camera -> flag for nothing detected
-#				self.obstacle_pub.publish(Int32(switch))
-#			except CvBridgeError as e:
+#				if not self.shutdown_:
+#						try:
+#								# 0 would be inside the camera -> flag for nothing detected
+#								self.obstacle_pub.publish(Int32(switch))
+#						except CvBridgeError as e:
 #
-#	def Lane_cahange(self, raw_msgs):
-#		# swap out loaded force field
-#		self.lane = (self.lane + 1) % 2
-#		if (self.lane == 0):
-#			self.matrix = np.load(self.file_path + 'matrix100cm_lane1.npy')
-#		else:
-#			self.matrix = np.load(self.file_path + 'matrix100cm_lane2.npy')
-#		self.map_size_x, self.map_size_y = self.matrix.shape[
-#			:2]  # *self.resolution #cm
-#		self.map_size_y *= self.resolution
-#		self.map_size_x *= self.resolution
+#		def Lane_cahange(self, raw_msgs):
+#				# swap out loaded force field
+#				self.lane = (self.lane + 1) % 2
+#				if (self.lane == 0):
+#						self.matrix = np.load(self.file_path + 'matrix100cm_lane1.npy')
+#				else:
+#						self.matrix = np.load(self.file_path + 'matrix100cm_lane2.npy')
+#				self.map_size_x, self.map_size_y = self.matrix.shape[
+#						:2]  # *self.resolution #cm
+#				self.map_size_y *= self.resolution
+#				self.map_size_x *= self.resolution
 
-	def obstacle_callback(self, data):
-		try:
-		  depth_image = self.bridge.imgmsg_to_cv2(data, "16UC1")
-		except CvBridgeError as e:
-		  print(e)
-		#height, width = depth_image.shape[0:2]
-		#dist camera to ground 155 in depth measure scale
+	def line_callback(self, data):
 
+		# probably not good when there is sun
+		#car field
 
-	def create_matrix(self):
-		mat_map = np.copy(self.point_img)
-		height, width = mat_map.shape[:2]
-		#find most far out points ymin,xmin,ymax,xmax
-		#... there are outliers 
-	#	trackshape = [height, width, 0, 0]
-	#	for y,row in enumerate(mat_map):
-	#		for x,cell in enumerate(row):
-	#			if cell != 255:
-	#				trackshape[0]=min(y,trackshape[0])
-	#				trackshape[1]=min(x,trackshape[1])
-	#				trackshape[2]=max(y,trackshape[2])
-	#				trackshape[3]=max(x,trackshape[3])
-	#	mat_map = mat_map[trackshape[0]:trackshape[2],trackshape[1]:trackshape[3]]
-		plt.imshow(mat_map, interpolation='nearest')
-		plt.show()
+		ir_image = self.bridge.imgmsg_to_cv2(data, '16UC1')
+		height, width = ir_image.shape[0:2]
+
+		# dist camera to ground 155 in depth measure scale
+		# cam image crop out car
+
+		# hyperparams
+
+		NOTROADCROP = 29 * height // 48
+		TOPCROP = height // 24
+		LANE_INTENSITY = 6500
+		ir_image = ir_image[TOPCROP:NOTROADCROP, :]
+		#update width height
+		height, width = ir_image.shape[0:2]
+		distance_radius = 5
+		alpha = 5*np.pi / 12
+		# rest
+		x = width//2
+		y = height
+		self.score = [None,None,None]
+		for direction in range(3):
+			# 0 somewhat left 1 straight line 2 somewhat right
+			dist_acc = 1
+			det = False
+			while not det:
+				# ceil for val	!= origin
+				# subtraction y axis because numpy has 0,0 left upper corner
+				x2 = int(math.ceil(x + math.cos(np.pi / 2
+												- alpha * (direction-1)) * dist_acc))
+				y2 = int(math.floor(y - (math.sin(np.pi / 2
+												  - alpha * (direction-1)) * dist_acc)))
+				dist_acc += 1
+				if 0 < x2 and x2 < width and 0 < y2 and y2 < height:
+					if ir_image[y2, x2] > LANE_INTENSITY:
+						det = True
+					else:
+						dist_acc = 0
+						break
+			self.score[direction] = dist_acc
+		#self.image_pub_gray.publish(self.bridge.cv2_to_imgmsg(ir_image,
+		#										'16UC1'))
+		#map field
+		#hyperparams
+		distance_radius = 19
+		alpha = 11*np.pi/24
+		#rest
+		#given yaw orientation in euler
+		#self.yaw = 3*np.pi/2
+		height, width = self.map_file.shape[:2]
+		map_score_dict = dict()
+		map_score = [None,None,None]
+		for direction in range(3):
+			#scaling sides
+			#todo
+			if direction % 2 == 0:
+				scaling = 1 
+			else:
+				#scaling front
+				#todo
+				scaling = 1
+			#camera pos to car pos
+			#todo get from yaw
+			x_offset = 0
+			y_offset = 0
+
+			#reduce points,1. inside error radius,2. sparse
+			#todo inside radius circle
+			range_x = int(10*self.x)
+			range_y = int(10*self.y)
+			for y in xrange(range_y - distance_radius,range_y + distance_radius,
+							distance_radius//3 -1):
+				for x in xrange(range_x-distance_radius, range_x + distance_radius,
+								distance_radius//3 -1 ):
+					det = False
+					dist_acc = 1
+					#0 somewhat left 1 straight line 2 somewhat right
+					while not det:
+						#ceil for val  != origin
+						#subtraction y axis because numpy has 0,0 left upper corner
+						x2 = int((x+math.cos(self.yaw - alpha*(direction-1))*dist_acc))
+						y2 = int(math.floor(y-math.sin(self.yaw 
+													   -alpha*(direction-1))*dist_acc))
+						dist_acc += 1
+						if (((0 < x2) and (x2  < width)) and ((0 < y2) and (y2 < height))):
+							if self.map_file[y2,x2] == 1:
+								det = True
+						else:
+							dist_acc=0
+							break
+					y2 = y2 + y_offset
+					x2 = x2 + x_offset
+					map_score[direction] = dist_acc * scaling
+					map_score_dict[(y2,x2)] = map_score
+		#calculate most likely spot
+		#todo integrate distortion
+		#todo pos infront of car
+		cand_dist = map_score_dict[(y2,x2)]
+		cand = (y2,x2)
+		value = sum(self.score)
+		for (y2,x2) in map_score_dict:
+			[left,middle,right]=map_score_dict[(y2,x2)]
+			if sum([left,middle,right])!=0:
+				print([left,middle,right])
+			if abs(sum([left,middle,right])-value) < abs(sum(cand_dist)-value):
+				cand = (y2,x2)
+				cand_dist = [left,middle,right]
+		#print("maybe")
+		#print cand
+		#print("real")
+		#print((range_y,range_x))
+		#print cand
+		#dif = [cand[0]-range_y,cand[1]-range_x]
+		#print dif
+			
+
 	
-
-				
-				
 
 	def odom_callback(self, raw_msgs):
 		# retrieving values from message
-		x = raw_msgs.pose.pose.position.x
-		y = raw_msgs.pose.pose.position.y
+		self.x = raw_msgs.pose.pose.position.x * self.resolution
+		self.y = raw_msgs.pose.pose.position.y * self.resolution
 		orientation = raw_msgs.pose.pose.orientation
 		orientation_array = [orientation.x,
-			orientation.y, orientation.z, orientation.w]
+		orientation.y, orientation.z, orientation.w]
 		# change the read-out data from Euler to Rad
 		orientation_in_Rad = tf.transformations.euler_from_quaternion(
 			orientation_array)
-		yaw = orientation_in_Rad[2]
-		x_ind = np.int(x * self.resolution)
-		y_ind = np.int(y * self.resolution)
+		self.yaw = orientation_in_Rad[2]
+		x_ind = np.int(self.x)
+		y_ind = np.int(self.y)
+    
+		#if abroad, car virtually set on the map
+		if x_ind < 0:
+				x_ind = 0
+		if x_ind > self.map_size_x / self.resolution - 1:
+				# from some code on github
+				# i wonder why it is not x_ind = self.map_size_x - 1
+				x_ind = self.map_size_x / self.resolution - 1
+		if y_ind < 0:
+				y_ind = 0
+		if y_ind > self.map_size_y / self.resolution - 1:
+				y_ind = self.map_size_y / self.resolution - 1
+		x_map, y_map = self.matrix[x_ind, y_ind]
+		# if we imagine the odometry as polar coordinates
+		# we have some radius r and a angle phi
+		# so now we combine the steering angle given from the force field alpha and phi
+		# with x = r * (cos(alpha-phi)) and y = (sin(alpha-phi))
+		# maybe it was phi - alpha in both i wrote it on a paper
+		# formula was given on the assignment sheet
+		x_car = np.cos(self.yaw) * x_map + np.sin(self.yaw) * y_map
+		y_car = -np.sin(self.yaw) * x_map + np.cos(self.yaw) * y_map
+		# hyperparameters for PID
+		Kp = 150
+		Ki = 0
+		Kd = 0.
+		# so the error is the steepness of the correction anlge
+		error = np.arctan(y_car / (x_car))
+		# pseudo integral memory in borders
+		self.aq_error = self.aq_error + error
+		if self.aq_error > 10:
+				self.aq_error = 10
+		elif self.aq_error < -10:
+				self.aq_error = -10
+		# time between measurements for delta t
+		current_time = rospy.Time.now()
+		dif_time = (current_time - self.last_time).to_sec()
+		# error manipulation with PI
+		# + Kd * (error - self.last_error) / dif_time
+		PID = Kp * error + Ki * self.aq_error * dif_time
+		PID = int(round(PID))
+		if (rospy.Time.now() - self.time_acc).to_sec() < 0.5 :
+				if PID < -10:
+						PID = -100
+				else:
+						PID = 80
+		self.last_time = current_time
+		self.last_error = error
+		# detect min dist direction
+		if (x_car < 0):
+				vel = -self.speed_value
+		else:
+				vel = self.speed_value
+		if x_car > 0:
+				# reduce speed based on steering
+				vel = max(self.speed_value, vel * ((np.pi / 3) / (abs(PID) + 1)))
+				# valid steering angle -100<=alpha<=80
+		if PID > 80:
+			PID = 80
+		elif PID < -100:
+			PID = -100
+		#offset 100 == straight ahead
+		PID = 100 + PID
+		self.str_val = PID
+		str_val = UInt8(PID)
+		# dont start acceleration after shutdown
+		if not self.shutdown_:
+				self.str_pub.publish(str_val)
+				self.vel_pub.publish(vel)
 
-		# if abroad, car virtually set on the map
-#		if x_ind < 0:
-#			x_ind = 0
-#		if x_ind > self.map_size_x / self.resolution - 1:
-#			# from some code on github
-#			# i wonder why it is not x_ind = self.map_size_x - 1
-#			x_ind = self.map_size_x / self.resolution - 1
-#		if y_ind < 0:
-#			y_ind = 0
-#		if y_ind > self.map_size_y / self.resolution - 1:
-#			y_ind = self.map_size_y / self.resolution - 1
-#		x_map, y_map = self.matrix[x_ind, y_ind]
-#		# if we imagine the odometry as polar coordinates
-#		# we have some radius r and a angle phi
-#		# so now we combine the steering angle given from the force field alpha and phi
-#		# with x = r * (cos(alpha-phi)) and y = (sin(alpha-phi))
-#		# maybe it was phi - alpha in both i wrote it on a paper
-#		# formula was given on the assignment sheet
-#		x_car = np.cos(yaw) * x_map + np.sin(yaw) * y_map
-#		y_car = -np.sin(yaw) * x_map + np.cos(yaw) * y_map
-#		# hyperparameters for PID
-#		Kp = 150
-#		Ki = 0
-#		Kd = 0.
-#		# so the error is the steepness of the correction anlge
-#		error = np.arctan(y_car / (x_car))
-#		# pseudo integral memory in borders
-#		self.aq_error = self.aq_error + error
-#		if self.aq_error > 10:
-#			self.aq_error = 10
-#		elif self.aq_error < -10:
-#			self.aq_error = -10
-#		# time between measurements for delta t
-#		current_time = rospy.Time.now()
-#		dif_time = (current_time - self.last_time).to_sec()
-#		# error manipulation with PI
-#		# + Kd * (error - self.last_error) / dif_time
-#		PID = Kp * error + Ki * self.aq_error * dif_time
-#		PID = int(round(PID))
-#		if (rospy.Time.now() - self.time_acc).to_sec() < 0.5 :
-#			if PID < -10:
-#				PID = -100
-#			else:
-#				PID = 80
-#		self.last_time = current_time
-#		self.last_error = error
-#		# detect min dist direction
-#		if (x_car < 0):
-#			vel = -self.speed_value
-#		else:
-#			vel = self.speed_value
-#		if x_car > 0:
-#			# reduce speed based on steering
-#			vel = max(self.speed_value, vel * ((np.pi / 3) / (abs(PID) + 1)))
-#			# valid steering angle -100<=alpha<=80
-#		if PID > 80:
-#			PID = 80
-#		elif PID < -100:
-#			PID = -100
-## offset 100 == straight ahead
-#		PID = 100 + PID
-#		self.str_val = PID
-#		str_val = UInt8(PID)
-#		# dont start acceleration after shutdown
-#		if not self.shutdown_:
-#			self.str_pub.publish(str_val)
-#			self.vel_pub.publish(vel)
-
-#	def callback(self,raw_msg):
-#                #flag something detected
-#                if raw_msg.data != 5000:
-#                        if (rospy.Time.now() - self.time_acc).to_sec() > 3 :
-#                                self.lane_change.publish(Bool(True))
-#                                self.time_acc = rospy.Time.now()
+#		def callback(self,raw_msg):
+#								 #flag something detected
+#								 if raw_msg.data != 5000:
+#												 if (rospy.Time.now() - self.time_acc).to_sec() > 3 :
+#																 self.lane_change.publish(Bool(True))
+#																 self.time_acc = rospy.Time.now()
 
 	def shutdown(self):
 		# set speed to 0
